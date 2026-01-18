@@ -27,7 +27,7 @@ class AIVoiceAssistant:
             request_timeout=120.0
         )
 
-        # ✅ Modern LlamaIndex configuration (NO ServiceContext)
+        # Modern LlamaIndex configuration (NO ServiceContext)
         Settings.llm = self._llm
         Settings.embed_model = HuggingFaceEmbedding(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
@@ -62,7 +62,7 @@ class AIVoiceAssistant:
                 vector_store=vector_store
             )
 
-            # ✅ NO service_context anymore
+            # NO service_context anymore
             self._index = VectorStoreIndex.from_documents(
                 documents,
                 storage_context=storage_context
