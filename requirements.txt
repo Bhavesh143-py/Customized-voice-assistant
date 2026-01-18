@@ -1,9 +1,13 @@
 gtts
 pygame
 pyaudio
-qdrant_client
+qdrant-client
 unstructured
 faster-whisper
 sentence-transformers
+
+llama-index
+llama-index-llms-ollama
 llama-index-vector-stores-qdrant
 llama-index-embeddings-huggingface
+

@@ -1,23 +1,42 @@
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
 from qdrant_client import QdrantClient
 from llama_index.llms.ollama import Ollama
-from llama_index.core import SimpleDirectoryReader
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core import ServiceContext, VectorStoreIndex
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.storage.storage_context import StorageContext
+from llama_index.core.settings import Settings
 
 import warnings
 warnings.filterwarnings("ignore")
 
+
 class AIVoiceAssistant:
     def __init__(self):
         self._qdrant_url = "http://localhost:6333"
-        self._client = QdrantClient(url=self._qdrant_url, prefer_grpc=False)
-        self._llm = Ollama(model="mistral", request_timeout=120.0)
-        self._service_context = ServiceContext.from_defaults(llm=self._llm, embed_model="local")
+        self._client = QdrantClient(
+            url=self._qdrant_url,
+            prefer_grpc=False
+        )
+
+        # Ollama LLM (CPU-only)
+        self._llm = Ollama(
+            model="qwen2.5:3b",
+            temperature=0.2,
+            request_timeout=120.0
+        )
+
+        # ✅ Modern LlamaIndex configuration (NO ServiceContext)
+        Settings.llm = self._llm
+        Settings.embed_model = HuggingFaceEmbedding(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+
         self._index = None
         self._create_kb()
         self._create_chat_engine()
+
 
     def _create_chat_engine(self):
         memory = ChatMemoryBuffer.from_defaults(token_limit=1500)
@@ -30,32 +49,43 @@ class AIVoiceAssistant:
     def _create_kb(self):
         try:
             reader = SimpleDirectoryReader(
-                input_files=[r"rag\restaurant_file.txt"]
+                input_files=["rag/pvg.txt"]
             )
             documents = reader.load_data()
-            vector_store = QdrantVectorStore(client=self._client, collection_name="kitchen_db")
-            storage_context = StorageContext.from_defaults(vector_store=vector_store)
-            self._index = VectorStoreIndex.from_documents(
-                documents, service_context=self._service_context, storage_context=storage_context
+
+            vector_store = QdrantVectorStore(
+                client=self._client,
+                collection_name="pvg_db"
             )
+
+            storage_context = StorageContext.from_defaults(
+                vector_store=vector_store
+            )
+
+            # ✅ NO service_context anymore
+            self._index = VectorStoreIndex.from_documents(
+                documents,
+                storage_context=storage_context
+            )
+
             print("Knowledgebase created successfully!")
+
         except Exception as e:
             print(f"Error while creating knowledgebase: {e}")
 
     def interact_with_llm(self, customer_query):
-        AgentChatResponse = self._chat_engine.chat(customer_query)
-        answer = AgentChatResponse.response
-        return answer
+        response = self._chat_engine.chat(customer_query)
+        return response.response
 
     @property
     def _prompt(self):
         return """
-            You are a professional AI Assistant receptionist working in Aditya's one of the best restaurant called Adii's Khana Khazana,
-            Ask questions mentioned inside square brackets which you have to ask from customer, DON'T ASK THESE QUESTIONS 
-            IN ONE go and keep the conversation engaging ! always ask question one by one only!
-            
-            [Ask Name and contact number, what they want to order and end the conversation with greetings!]
+You are an AI Placement Assistant for a college.
 
-            If you don't know the answer, just say that you don't know, don't try to make up an answer.
-            Provide concise and short answers not more than 10 words, and don't chat with yourself!
-            """
+You must answer ONLY placement-related questions.
+Use ONLY the provided context.
+If the answer is not available, say:
+"I'm sorry, I can only help with placement-related questions based on available data."
+
+Do NOT make up answers.
+"""

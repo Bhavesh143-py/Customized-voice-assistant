@@ -1,0 +1,13 @@
+step 1 : first of all you need to pull mistral do that by 
+ollama pull mistral
+also note you have to do this first time only
+
+step 2 : on first terminal start ollama server by
+ollama serve
+
+step 3 : on another terminal start qdrant by 
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+
+step 4 : on third terminal do
+python app.py
+
