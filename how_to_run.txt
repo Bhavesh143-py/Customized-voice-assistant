@@ -1,5 +1,5 @@
 step 1 : first of all you need to pull mistral do that by 
-ollama pull mistral
+ollama pull qwen2.5:3b
 also note you have to do this first time only
 
 step 2 : on first terminal start ollama server by
