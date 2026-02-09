@@ -1,0 +1,9 @@
+#the text in the files is manually cleaned , will figure out a way later to clean them with script.
+
+crawl4ai
+playwright
+beautifulsoup4
+readability-lxml
+lxml
+
+#you must run "python -m playright install" after installing all the stuff 
