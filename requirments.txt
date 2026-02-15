@@ -1,9 +1,10 @@
-#the text in the files is manually cleaned , will figure out a way later to clean them with script.
+langchain-core
+langchain-community
+langchain-ollama
+langchain-qdrant
 
-crawl4ai
-playwright
-beautifulsoup4
-readability-lxml
-lxml
+qdrant-client
+pydantic
+rich
+pandas
 
-#you must run "python -m playright install" after installing all the stuff 
