@@ -1,0 +1,8 @@
+open venv 
+download docker deckstop
+docker-compose up
+can take upto 1 hr (if net is slightly slow -2hrs)
+check logs continuously errors can happen
+then in new terminal 
+  python websocket_audio_client.py
+  (i am not getting audio back in docker locally works fine) solve that issue.
