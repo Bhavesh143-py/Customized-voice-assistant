@@ -1,23 +1,32 @@
-# In app.py
-from Recorder.Frontend import show_recorder
-from Backend.RagAssistant import AIVoiceAssistant
+from Recorder.WebSocketServer import run_server
+
 
 def main():
-    #initialize rag assistant
-    assistant = AIVoiceAssistant()
+    """Start the AI Voice Assistant WebSocket Server"""
+    print("=" * 60)
+    print("AI Voice Assistant - WebSocket Server")
+    print("=" * 60)
+    print()
+    print("Server starting on: ws://localhost:8765")
+    print()
+    print("To connect a client, use a WebSocket client library:")
+    print("  * Python: websockets")
+    print("  * JavaScript: WebSocket API (built-in)")
+    print("  * Other languages: available in most major languages")
+    print()
+    print("Example message format:")
+    print("  {'type': 'audio', 'audio': [list of float samples]}")
+    print("  {'type': 'process_audio'}  # Force processing")
+    print("  {'type': 'get_status'}     # Check server status")
+    print()
+    print("Press Ctrl+C to stop the server")
+    print("=" * 60)
+    print()
     
-    def handle_transcription(text):
-        global answer
-        print("User said:", text)
-        answer = assistant.interact_with_llm(text)
-        
-        # answer = run_rag(text)
-        print("AI:", answer)
-        # run_tts(answer)
-
-    print("Starting application...")
-    show_recorder(handle_transcription)
-    print("Application closed.")
+    try:
+        run_server(host="0.0.0.0", port=8765)
+    except KeyboardInterrupt:
+        print("\nServer stopped.")
 
 
 if __name__ == "__main__":

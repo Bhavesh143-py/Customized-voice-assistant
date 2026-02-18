@@ -11,7 +11,7 @@ beautifulsoup4==4.14.3
 certifi==2026.1.4
 cffi==2.0.0
 charset-normalizer==3.4.4
-click==8.3.1
+click==8.1.8
 colorama==0.4.6
 coloredlogs==15.0.1
 ctranslate2==4.6.3
@@ -29,6 +29,7 @@ fsspec==2026.1.0
 greenlet==3.3.0
 griffe==1.15.0
 grpcio==1.76.0
+gTTS==2.5.4
 h11==0.16.0
 h2==4.3.0
 hf-xet==1.2.0
@@ -80,6 +81,7 @@ protobuf==6.33.4
 pycparser==3.0
 pydantic==2.12.5
 pydantic_core==2.41.5
+pygame==2.6.1
 pypdf==6.6.0
 pyreadline3==3.5.4
 python-dateutil==2.9.0.post0
@@ -116,5 +118,6 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.3
 urllib3==2.6.3
+websockets==13.1
 wrapt==1.17.3
 yarl==1.22.0
