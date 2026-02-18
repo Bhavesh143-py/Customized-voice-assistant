@@ -1,0 +1,84 @@
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ai-voice-rag-qdrant
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+    networks:
+      - ai-voice-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Ollama LLM Service with Qwen-3B
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-voice-rag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    networks:
+      - ai-voice-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ollama list | grep -q qwen2.5 && echo 'ok' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    entrypoint: sh -c "ollama serve & sleep 3 && while ! curl -f http://localhost:11434/api/tags >/dev/null 2>&1; do sleep 1; done && ollama pull qwen2.5:3b && wait"
+
+  # WebSocket Server
+  websocket_server:
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket_server
+    container_name: ai-voice-rag-server
+    ports:
+      - "8765:8765"  # WebSocket server port
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_HOST=http://ollama:11434
+      - PYTHONUNBUFFERED=1
+    networks:
+      - ai-voice-network
+    volumes:
+      - ./Backend:/app/Backend
+      - ./Documents:/app/Documents
+      - ./Recorder:/app/Recorder
+      - ./TTS:/app/TTS
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8765)); print('ok')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  ai-voice-network:
+    driver: bridge
+
+volumes:
+  qdrant_storage:
+    driver: local
+  ollama_data:
+    driver: local
+
