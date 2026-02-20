@@ -15,17 +15,24 @@ warnings.filterwarnings("ignore")
 
 class AIVoiceAssistant:
     def __init__(self):
-        self._qdrant_url = "http://qdrant:6333"
+        # self._qdrant_url = "http://qdrant:6333"
+        self._qdrant_url = "http://localhost:6333"
         self._client = QdrantClient(url=self._qdrant_url, prefer_grpc=False)
 
         # Ollama LLM (CPU-only)
+        # self._llm = Ollama(
+        #     model="qwen2.5:3b",
+        #     base_url="http://ollama:11434",
+        #     temperature=0.2,
+        #     request_timeout=120.0
+        # )
         self._llm = Ollama(
             model="qwen2.5:3b",
-            base_url="http://ollama:11434",
+            base_url="http://localhost:11434",
             temperature=0.2,
             request_timeout=120.0
         )
-
+        
         # Modern LlamaIndex configuration (NO ServiceContext)
         Settings.llm = self._llm
         Settings.embed_model = HuggingFaceEmbedding(

@@ -6,7 +6,8 @@ import threading
 import queue
 from faster_whisper import WhisperModel
 from Backend.RagAssistant import AIVoiceAssistant
-from TTS.TTS_module import run_tts, run_tts_async
+from TTS.TTS_module import run_tts, run_tts_async, run_tts_bytes_async
+import base64
 
 # Load Faster Whisper model
 model = WhisperModel("base", device="cpu", compute_type="int8")
@@ -159,9 +160,19 @@ async def process_audio_chunk_async(websocket):
                     "text": ai_response
                 }))
                 
-                # Generate and play TTS (non-blocking)
+                # Generate TTS bytes and send to client (non-blocking)
                 try:
-                    await run_tts_async(ai_response)
+                    tts_bytes = await run_tts_bytes_async(ai_response)
+                    if tts_bytes:
+                        print(f"TTS generated: {len(tts_bytes)} bytes; sending to client")
+                        b64 = base64.b64encode(tts_bytes).decode('ascii')
+                        # Log size of base64 payload (for debugging)
+                        print(f"TTS base64 size: {len(b64)} chars")
+                        await websocket.send(json.dumps({
+                            "type": "tts_audio",
+                            "format": "mp3",
+                            "audio_b64": b64
+                        }))
                 except Exception as tts_error:
                     print(f"TTS error: {str(tts_error)}")
     
@@ -184,8 +195,8 @@ def process_audio_chunk(websocket, loop):
 async def start_websocket_server(host="localhost", port=8765):
     """Start the WebSocket server"""
     print(f"Starting WebSocket server on ws://{host}:{port}")
-    
-    async with websockets.serve(handle_client, host, port):
+    # Allow large messages (TTS MP3 base64 can exceed default 1MB)
+    async with websockets.serve(handle_client, host, port, max_size=None):
         print(f"WebSocket server is running on ws://{host}:{port}")
         await asyncio.Future()  # Run forever
 

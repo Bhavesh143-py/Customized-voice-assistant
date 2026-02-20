@@ -12,6 +12,10 @@ import sounddevice as sd
 import numpy as np
 import threading
 import queue
+import base64
+import uuid
+import pygame
+import os
 
 
 class WebSocketAudioClient:
@@ -46,6 +50,18 @@ class WebSocketAudioClient:
                         print(f"\n🎤 You said: {data.get('text', '')}")
                     elif message_type == "response":
                         print(f"\n🤖 AI: {data.get('text', '')}\n")
+                    elif message_type == "tts_audio":
+                        # Receive base64-encoded MP3 bytes and play locally
+                        audio_b64 = data.get("audio_b64")
+                        if audio_b64:
+                            try:
+                                print(f"✓ Received tts_audio message: {len(audio_b64)} chars")
+                                mp3_bytes = base64.b64decode(audio_b64)
+                                print(f"✓ Decoded TTS bytes: {len(mp3_bytes)} bytes")
+                                threading.Thread(target=self._play_mp3_bytes, args=(mp3_bytes,), daemon=True).start()
+                                print("🔊 Playing TTS audio...")
+                            except Exception as e:
+                                print(f"✗ TTS playback error: {e}")
                     elif message_type == "status":
                         print(f"✓ {data.get('message', '')}")
                     elif message_type == "error":
@@ -54,12 +70,36 @@ class WebSocketAudioClient:
                         print(f"Server: {data}")
                         
                 except json.JSONDecodeError:
-                    print(f"Invalid JSON from server: {message}")
+                    print(f"✗ Invalid JSON from server: {message}")
                     
         except asyncio.CancelledError:
             print("Response handler stopped")
         except Exception as e:
-            print(f"Error processing responses: {e}")
+            print(f"✗ Error processing responses: {e}")
+
+    def _play_mp3_bytes(self, mp3_bytes: bytes):
+        """Write MP3 bytes to a temp file and play using pygame in a background thread."""
+        filename = f"{uuid.uuid4()}.mp3"
+        try:
+            with open(filename, "wb") as f:
+                f.write(mp3_bytes)
+
+            try:
+                pygame.mixer.init()
+                pygame.mixer.music.load(filename)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    pygame.time.Clock().tick(10)
+                pygame.mixer.quit()
+                print("✓ TTS playback completed")
+            except Exception as e:
+                print(f"✗ Pygame playback error: {e}")
+        finally:
+            try:
+                if os.path.exists(filename):
+                    os.remove(filename)
+            except Exception:
+                pass
     
     async def send_audio_from_queue(self):
         """Continuously send audio data from queue to WebSocket server"""
@@ -78,12 +118,12 @@ class WebSocketAudioClient:
                             await self.websocket.send(message)
                             print(f"📤 Sent audio chunk ({len(audio_chunk)} samples)")
                         except Exception as e:
-                            print(f"Error sending audio: {e}")
+                            print(f"✗ Error sending audio: {e}")
                 except queue.Empty:
                     # No audio data available, continue
                     pass
         except Exception as e:
-            print(f"Error in send_audio_from_queue: {e}")
+            print(f"✗ Error in send_audio_from_queue: {e}")
     
     async def stream_audio(self):
         """Stream audio from microphone to WebSocket server"""
@@ -117,12 +157,13 @@ class WebSocketAudioClient:
                     await asyncio.sleep(0.1)
                     
         except Exception as e:
-            print(f"Error in audio stream: {e}")
+            print(f"✗ Error in audio stream: {e}")
     
     async def connect(self):
         """Connect to WebSocket server and start streaming"""
         try:
-            async with websockets.connect(self.uri) as websocket:
+            # Allow large incoming messages (TTS base64 payloads can exceed default 1MB limit)
+            async with websockets.connect(self.uri, max_size=None) as websocket:
                 self.websocket = websocket
                 print(f"✓ Connected to {self.uri}")
                 

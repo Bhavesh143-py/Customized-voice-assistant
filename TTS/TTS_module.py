@@ -10,6 +10,7 @@ import pygame
 import uuid
 import os
 import logging
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,28 @@ async def run_tts_async(text: str, lang: str = "en") -> bool:
     import asyncio
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, run_tts, text, lang)
+
+
+def tts_bytes(text: str, lang: str = "en") -> bytes:
+    """Return MP3 bytes for the given text (does not play audio)."""
+    if not text or not text.strip():
+        return b""
+
+    try:
+        fp = BytesIO()
+        tts = gTTS(text=text, lang=lang, slow=False)
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return fp.read()
+    except Exception as e:
+        logger.error(f"TTS bytes error: {e}")
+        return b""
+
+
+async def run_tts_bytes_async(text: str, lang: str = "en") -> bytes:
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, tts_bytes, text, lang)
 
 
 if __name__ == "__main__":
