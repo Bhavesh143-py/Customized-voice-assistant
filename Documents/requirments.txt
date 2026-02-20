@@ -1,0 +1,8 @@
+langchain
+langchain-core
+langchain-experimental
+langchain-qdrant
+langchain-ollama
+qdrant-client
+pandas
+
