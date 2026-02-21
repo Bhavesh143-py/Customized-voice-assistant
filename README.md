@@ -43,7 +43,7 @@ pvg_voice_assistant/
 
 ---
 
-## 🚀 Quick Start
+## Imp Steps
 
 ### Step 1 — Place your data files
 ```bash
