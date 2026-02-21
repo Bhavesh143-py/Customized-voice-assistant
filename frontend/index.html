@@ -806,6 +806,9 @@ let activeTab     = 'you';
 let lastYouText   = '';
 let lastBotText   = '';
 
+// ── No VAD — manual button recording only ─────────────────────────────────
+// User presses mic to start, presses again to stop and send.
+
 /* ─────────────────────────────────────────────────────────────────────────
    WEBSOCKET
 ───────────────────────────────────────────────────────────────────────── */
@@ -932,9 +935,17 @@ async function startRecording() {
       audio: {
         sampleRate: SAMPLE_RATE,
         channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation:      { ideal: true },
+        noiseSuppression:      { ideal: true },
+        autoGainControl:       { ideal: true },
+        googEchoCancellation:  true,
+        googEchoCancellation2: true,   // Chrome improved AEC
+        googNoiseSuppression:  true,
+        googNoiseSuppression2: true,   // Chrome improved NS
+        googHighpassFilter:    true,   // cuts fan/AC low-freq rumble
+        googAutoGainControl:   true,
+        googAudioMirroring:    false,
+        latency:               0,
       }
     });
   } catch (err) {
@@ -983,6 +994,8 @@ function stopRecording() {
   setMicRecording(false);
   updateMicStateText('Processing…');
 }
+
+
 
 async function convertToPCM(blob) {
   // Decode webm to PCM float32, then convert to Int16 PCM
