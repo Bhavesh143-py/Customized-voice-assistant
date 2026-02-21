@@ -1,3 +1,9 @@
+> **Note**
+>
+> Voice Activity Detection (VAD) was removed from the voice pipeline it was affecting the accuracy of the pipeline for the time being let us stick to the button system
+
+
+
 ## 📐 System Architecture
 
 ```
