@@ -21,6 +21,11 @@ build/
 dist/
 *.egg-info/
 
+qdrant_data/
+node_modules/
+venv/
+.env
+
 # Logs
 
 *.log
@@ -111,4 +116,3 @@ temp/
 coverage/
 htmlcov/
 
-qdrant_data/
