@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 # ── CONFIG ───────────────────────────────────────────────────────────────────
-QDRANT_HOST       = "localhost"
+QDRANT_HOST       = "pvg_qdrant" #was localhost before
 QDRANT_PORT       = 6333
 COLLECTION_NAME   = "pvg_college"
 EMBED_MODEL       = "nomic-embed-text"

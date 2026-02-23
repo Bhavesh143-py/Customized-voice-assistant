@@ -758,8 +758,8 @@
           <div class="quick-pill" onclick="askText('Tell me about the departments')">Departments</div>
           <div class="quick-pill" onclick="askText('What facilities does the campus have?')">Campus facilities</div>
           <div class="quick-pill" onclick="askText('What is the fee structure?')">Fees</div>
-          <div class="quick-pill" onclick="askText('Who are the faculty members?')">Faculty</div>
-          <div class="quick-pill" onclick="askText('When are the upcoming exams?')">Exam schedule</div>
+          <div class="quick-pill" onclick="askText('Contact details for the admission?')">Contact</div>
+          <div class="quick-pill" onclick="askText('Where is the college located?')">Location</div>
         </div>
       </div>
 
@@ -805,6 +805,9 @@ let waveAnimId    = null;
 let activeTab     = 'you';
 let lastYouText   = '';
 let lastBotText   = '';
+
+// ── No VAD — manual button recording only ─────────────────────────────────
+// User presses mic to start, presses again to stop and send.
 
 /* ─────────────────────────────────────────────────────────────────────────
    WEBSOCKET
@@ -932,9 +935,17 @@ async function startRecording() {
       audio: {
         sampleRate: SAMPLE_RATE,
         channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation:      { ideal: true },
+        noiseSuppression:      { ideal: true },
+        autoGainControl:       { ideal: true },
+        googEchoCancellation:  true,
+        googEchoCancellation2: true,   // Chrome improved AEC
+        googNoiseSuppression:  true,
+        googNoiseSuppression2: true,   // Chrome improved NS
+        googHighpassFilter:    true,   // cuts fan/AC low-freq rumble
+        googAutoGainControl:   true,
+        googAudioMirroring:    false,
+        latency:               0,
       }
     });
   } catch (err) {
@@ -983,6 +994,8 @@ function stopRecording() {
   setMicRecording(false);
   updateMicStateText('Processing…');
 }
+
+
 
 async function convertToPCM(blob) {
   // Decode webm to PCM float32, then convert to Int16 PCM
