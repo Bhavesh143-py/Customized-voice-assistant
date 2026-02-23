@@ -1,5 +1,4 @@
-# 🎓 PVGCOET Voice Assistant
-### Pune Vidyarthi Griha's College of Engineering
+# NO### Pune Vidyarthi Griha's College of Engineering
 
 A fully offline, CPU-friendly RAG-powered voice assistant for the college,
 built with WebSocket real-time audio, Faster-Whisper STT, Qdrant vector DB,
@@ -148,29 +147,6 @@ Edit `backend/main.py` to change:
 | `TOP_K` | `5` | Number of RAG chunks to retrieve |
 | `MEMORY_TURNS` | `4` | Conversation turns to remember |
 | `PIPER_MODEL_PATH` | `./tts_models/...` | Path to Piper ONNX model |
-
----
-
-## 🛠 CPU Performance Tips
-
-Since everything runs on CPU:
-
-| Component | Optimization Applied |
-|---|---|
-| Faster-Whisper | `compute_type=int8`, `cpu_threads=4`, `beam_size=3`, VAD filter |
-| Qwen2.5-3B | `num_predict=200` (short answers), `num_ctx=2048` |
-| Qdrant | Local in-memory mode, top_k=5 only |
-| Piper TTS | Runs natively as a subprocess, very fast on CPU |
-
-**Expected latency on CPU (i5/i7 laptop):**
-- STT (Whisper medium): ~3–6 seconds
-- RAG retrieval: ~0.5 seconds
-- LLM generation: ~10–20 seconds (Qwen2.5-3B)
-- TTS (Piper): ~1–2 seconds
-
-**Total ~15–30 seconds per query** — acceptable for a kiosk/demo setting.
-
-> **Tip:** Switch to `WHISPER_MODEL_SIZE = "small"` or `"base"` to reduce STT time by ~50% with minimal accuracy loss for simple questions.
 
 ---
 
