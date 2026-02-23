@@ -1,0 +1,119 @@
+version: "3.9"
+
+# ── PVG Voice Assistant — Docker Compose ──────────────────────────────────────
+# Works on both Linux and Windows with Docker Desktop
+# Run on Linux:   docker compose up -d
+# Run on Windows: docker compose up -d  (same command!)
+#
+# Services:
+#   qdrant    → vector database (stores your embeddings)
+#   ollama    → runs Qwen2.5 LLM + Nomic embeddings
+#   backend   → FastAPI server (STT + RAG + LLM + TTS)
+#   frontend  → Nginx serving index.html
+
+services:
+
+  # ── Qdrant Vector Database ──────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: pvg_qdrant
+    ports:
+      - "6333:6333"       # REST API (browser dashboard at localhost:6333/dashboard)
+      - "6334:6334"       # gRPC port
+    volumes:
+      - qdrant_data:/qdrant/storage   # embeddings saved to Docker volume (persistent)
+    restart: unless-stopped
+
+  # ── Ollama (LLM + Embeddings) ───────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pvg_ollama
+    ports:
+      - "11434:11434"     # Ollama API
+    volumes:
+      - ollama_data:/root/.ollama   # AI models saved here (2GB+, don't lose this!)
+    restart: unless-stopped
+
+  # ── Model Puller (runs once, pulls Qwen + Nomic into Ollama) ────────────────
+  # This service runs ONCE on first setup, pulls models then exits
+  model-puller:
+    image: ollama/ollama:latest
+    container_name: pvg_model_puller
+    volumes:
+      - ollama_data:/root/.ollama   # shares same volume as ollama service
+    depends_on:
+      - ollama
+    entrypoint: >
+      sh -c "
+        echo 'Pulling Qwen2.5-3B (about 2GB, please wait...)...' &&
+        ollama pull qwen2.5:3b --host http://pvg_ollama:11434 &&
+        echo 'Pulling nomic-embed-text...' &&
+        ollama pull nomic-embed-text --host http://pvg_ollama:11434 &&
+        echo 'All models pulled successfully!'
+      "
+    restart: "no"   # run once only, don't restart
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .                  # project root — so Docker can see both backend/ and scripts/
+      dockerfile: backend/Dockerfile
+    container_name: pvg_backend
+    ports:
+      - "8000:8000"       # FastAPI + WebSocket endpoint
+    volumes:
+      - ./data:/app/data                   # your .txt college files
+      - ./tts_models:/app/tts_models       # Amy voice model files
+      - ./scripts:/app/scripts             # ingest.py accessible inside container
+      - whisper_cache:/root/.cache         # Whisper model cache (persistent)
+    environment:
+      # These tell main.py where to find other services
+      # Container names on Docker network act as hostnames
+      - QDRANT_HOST=pvg_qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_HOST=pvg_ollama
+      - OLLAMA_PORT=11434
+      - PIPER_MODEL_PATH=/app/tts_models/en_US-amy-medium.onnx
+      - WHISPER_MODEL_SIZE=small.en        # faster on CPU (change to medium.en for accuracy)
+    depends_on:
+      - qdrant
+      - ollama
+    restart: unless-stopped
+
+  # ── Data Ingester (runs once, ingests .txt files into Qdrant) ───────────────
+  # Runs after backend is healthy, ingests data then exits
+  ingester:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pvg_ingester
+    volumes:
+      - ./data:/app/data
+      - ./scripts:/app/scripts
+    environment:
+      - QDRANT_HOST=pvg_qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_HOST=pvg_ollama
+      - OLLAMA_PORT=11434
+    depends_on:
+      - qdrant
+      - ollama
+    entrypoint: ["python3", "/app/scripts/ingest.py", "--data_dir", "/app/data"]
+    restart: "no"   # run once only
+
+  # ── Frontend via Nginx ──────────────────────────────────────────────────────
+  frontend:
+    image: nginx:alpine
+    container_name: pvg_frontend
+    ports:
+      - "3000:80"         # open http://localhost:3000 in browser
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro   # serves index.html (read-only)
+    restart: unless-stopped
+
+# ── Named Volumes ───────────────────────────────────────────────────────────
+# Docker manages these folders — persistent across container restarts
+volumes:
+  qdrant_data:      # stores your vector embeddings
+  ollama_data:      # stores downloaded AI models
+  whisper_cache:    # stores downloaded Whisper model
