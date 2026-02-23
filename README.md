@@ -1,11 +1,3 @@
-# NO### Pune Vidyarthi Griha's College of Engineering
-
-A fully offline, CPU-friendly RAG-powered voice assistant for the college,
-built with WebSocket real-time audio, Faster-Whisper STT, Qdrant vector DB,
-Qwen2.5-3B LLM via Ollama, Nomic embeddings, and Piper TTS.
-
----
-
 ## 📐 System Architecture
 
 ```
