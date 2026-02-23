@@ -1,4 +1,5 @@
 # PVG Voice Assistant - Backend Requirements
+# Install with: pip install -r requirements.txt
 
 # Web framework
 fastapi==0.115.0
@@ -9,18 +10,11 @@ python-multipart==0.0.9
 # STT - Faster Whisper
 faster-whisper==1.0.3
 
-# faster-whisper dependency (was missing!)
-requests==2.32.3
-
 # Vector Database
 qdrant-client==1.11.1
 
 # LLM + Embeddings via Ollama
 ollama==0.3.3
-
-# Audio preprocessing
-noisereduce==3.0.3
-scipy==1.13.1
 
 # Utilities
 numpy==1.26.4

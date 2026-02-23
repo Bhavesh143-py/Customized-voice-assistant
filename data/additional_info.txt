@@ -3,11 +3,6 @@ PVG’s College of Engineering, Technology & Management, Pune
 Additional Institutional Information Dataset
 
 ------------------------------------------------------------
-0. Establishment
-------------------------------------------------------------
-The college was established in 1985.
-
-------------------------------------------------------------
 1. Affiliation
 ------------------------------------------------------------
 The college is affiliated with Savitribai Phule Pune University (SPPU).
@@ -67,7 +62,7 @@ Electronics & Telecommunication Engineering: 120
 ------------------------------------------------------------
 OPEN: ₹1,23,701
 OBC / EBC / SEBC / EWS: ₹70,644
-SBC / VJ / DT / NT / TFWS: ₹17,587
+SBC / VJ / DT / NT / TFWS / Girls: ₹17,587
 SC / ST / PMSSS: ₹2,201
 
 ------------------------------------------------------------
