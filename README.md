@@ -1,4 +1,52 @@
-## 📐 System Architecture
+# 🪟 Windows Quick Start
+
+### 📦 Double-Click Setup (No Terminal Needed)
+
+**SETUP.bat**
+Run this **once** after cloning/downloading the project. It will automatically:
+
+* Check if Docker is installed and running
+* Download required AI models
+* Build all containers
+* Ingest initial data
+
+👉 No terminal commands required.
+
+---
+
+**START.bat**
+Use this for daily usage.
+
+* Starts all services/containers
+* Launches the application
+* Automatically opens your browser
+
+---
+
+**STOP.bat**
+Stops all running containers and services safely.
+
+---
+
+**REINGEST.bat**
+Run this whenever new `.txt` files are added.
+
+* Reloads documents
+* Rebuilds embeddings/vector index
+* Updates the assistant’s knowledge base
+
+---
+
+### 🧠 Typical Workflow
+
+1. Run **SETUP.bat** → one time only
+2. Use **START.bat** → every day
+3. Add new data → run **REINGEST.bat**
+4. Finish work → run **STOP.bat**
+
+---
+
+# 📐 System Architecture
 
 ```
 Browser (Frontend)
@@ -22,169 +70,162 @@ FastAPI Backend (backend/main.py)
 
 ---
 
-## 📁 Project Structure
+# 📁 Project Structure
 
 ```
 pvg_voice_assistant/
 ├── backend/
-│   ├── main.py               ← FastAPI server (main entry point)
-│   └── requirements.txt      ← Python dependencies
+│   ├── main.py
+│   └── requirements.txt
 ├── frontend/
-│   └── index.html            ← Demo website (open in browser)
+│   └── index.html
 ├── scripts/
-│   └── ingest.py             ← Data ingestion script
+│   └── ingest.py
 ├── data/                     ← PUT YOUR .txt FILES HERE
 ├── tts_models/               ← Piper model files (auto-downloaded)
 ├── qdrant_data/              ← Qdrant storage (auto-created)
-├── setup.sh                  ← One-time setup script
-├── run.sh                    ← Start the server
+├── setup.sh
+├── run.sh
 └── README.md
 ```
 
 ---
 
-## 🚀 Quick Start
+# 🚀 Quick Start (Linux / macOS)
 
 ### Step 1 — Place your data files
-```bash
-# Copy all your scraped college .txt files into the data/ folder
+
+```
 cp /path/to/your/scraped/*.txt data/
 ```
 
 ### Step 2 — Run setup (one time only)
-```bash
+
+```
 chmod +x setup.sh run.sh
 ./setup.sh
 ```
 
 This will:
-- Create Python virtual environment
-- Install all Python packages
-- Install Ollama and pull `qwen2.5:3b` and `nomic-embed-text`
-- Install/start Qdrant via Docker
-- Download Piper TTS voice model
-- Ingest your .txt files into Qdrant
+
+* Create Python virtual environment
+* Install Python packages
+* Install Ollama and pull `qwen2.5:3b` and `nomic-embed-text`
+* Install/start Qdrant via Docker
+* Download Piper TTS voice model
+* Ingest `.txt` files into Qdrant
 
 ### Step 3 — Start the server
-```bash
+
+```
 ./run.sh
 ```
 
 ### Step 4 — Open the frontend
-```
-Open frontend/index.html in your browser
-(Chrome or Edge recommended for WebRTC/Audio APIs)
-```
+
+Open `frontend/index.html` in your browser
+(Chrome or Edge recommended)
 
 ---
 
-## ⚙️ Manual Setup (if setup.sh fails)
+# ⚙️ Manual Setup (If setup.sh Fails)
 
-### 1. Python environment
-```bash
+## 1. Python environment
+
+```
 python3 -m venv venv
 source venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-### 2. Ollama models
-```bash
-# Install Ollama: https://ollama.com
+## 2. Ollama models
+
+```
 ollama pull qwen2.5:3b
 ollama pull nomic-embed-text
 ```
 
-### 3. Qdrant
-```bash
-# Via Docker (recommended):
+## 3. Qdrant (Docker)
+
+```
 docker run -d --name pvg_qdrant -p 6333:6333 \
   -v $(pwd)/qdrant_data:/qdrant/storage qdrant/qdrant
-
-# Or install natively: https://qdrant.tech/documentation/quick-start/
 ```
 
-### 4. Piper TTS
-```bash
-# Download piper binary: https://github.com/rhasspy/piper/releases
-# Download voice model:
-mkdir -p tts_models && cd tts_models
-wget "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
-wget "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
-```
+## 4. Piper TTS
 
-### 5. Ingest data
-```bash
-source venv/bin/activate
+Download piper binary and model into `tts_models/`.
+
+## 5. Ingest data
+
+```
 python3 scripts/ingest.py --data_dir ./data
 ```
 
-### 6. Start backend
-```bash
-source venv/bin/activate
-cd backend
-uvicorn main:app --host 0.0.0.0 --port 8000
+## 6. Start backend
+
+```
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 ---
 
-## 🔧 Configuration
+# 🔧 Configuration
 
 Edit `backend/main.py` to change:
 
-| Variable | Default | Description |
-|---|---|---|
-| `WHISPER_MODEL_SIZE` | `"medium"` | STT model size (tiny/base/small/medium) |
-| `OLLAMA_LLM_MODEL` | `"qwen2.5:3b"` | LLM model name in Ollama |
-| `OLLAMA_EMBED_MODEL` | `"nomic-embed-text"` | Embedding model |
-| `TOP_K` | `5` | Number of RAG chunks to retrieve |
-| `MEMORY_TURNS` | `4` | Conversation turns to remember |
-| `PIPER_MODEL_PATH` | `./tts_models/...` | Path to Piper ONNX model |
+| Variable             | Default            | Description               |
+| -------------------- | ------------------ | ------------------------- |
+| `WHISPER_MODEL_SIZE` | "medium"           | STT model size            |
+| `OLLAMA_LLM_MODEL`   | "qwen2.5:3b"       | LLM model                 |
+| `OLLAMA_EMBED_MODEL` | "nomic-embed-text" | Embedding model           |
+| `TOP_K`              | 5                  | Number of RAG chunks      |
+| `MEMORY_TURNS`       | 4                  | Conversation memory turns |
+| `PIPER_MODEL_PATH`   | ./tts_models/...   | Piper model path          |
 
 ---
 
-## 🌐 Frontend Features
+# 🌐 Frontend Features
 
-- **Push-to-talk button** — Click once to start recording, click again to send
-- **Live waveform visualizer** — Shows audio input in real time
-- **Transcript panel** — Shows what you said + what the bot responded
-- **Conversation history** — Scrollable chat window with all turns
-- **Quick pills** — One-click questions for common queries
-- **Auto-reconnect** — WebSocket reconnects if backend restarts
-- **Fallback TTS** — Uses browser Web Speech API if Piper audio fails
-- **Keyboard shortcut** — Press `Space` to toggle recording
-
----
-
-## ❓ FAQ
-
-**Q: The bot gives wrong answers**
-A: Re-run ingestion: `python3 scripts/ingest.py --data_dir ./data`
-   Check your .txt files have relevant content.
-
-**Q: No audio output**
-A: Check that `piper` binary is in PATH and model files are in `tts_models/`.
-   Browser fallback TTS will activate automatically if Piper fails.
-
-**Q: WebSocket connection failed**
-A: Make sure backend is running on port 8000. Check CORS if serving frontend from a web server.
-
-**Q: Out of memory errors**
-A: Use a smaller LLM: change `OLLAMA_LLM_MODEL = "qwen2.5:1.5b"` in `main.py`.
+* Push-to-talk button
+* Live waveform visualizer
+* Transcript panel
+* Conversation history
+* Quick question pills
+* Auto WebSocket reconnect
+* Browser fallback TTS
+* Spacebar toggle recording
 
 ---
 
-## 📦 Tech Stack
+# ❓ FAQ
 
-| Component | Technology |
-|---|---|
-| Frontend | Vanilla HTML/CSS/JS (WebSocket + Web Audio API) |
-| Backend | FastAPI + Uvicorn |
-| STT | Faster-Whisper medium (CPU/int8) |
-| Embeddings | Nomic-embed-text via Ollama |
-| Vector DB | Qdrant (local) |
-| LLM | Qwen2.5-3B via Ollama |
-| TTS | Piper TTS (en_US-lessac-medium) |
-| Transport | WebSocket (simpler than full WebRTC for LAN kiosk use) |
+**Bot gives wrong answers**
+Re-run ingestion.
+
+**No audio output**
+Check Piper installation; browser fallback will activate if needed.
+
+**WebSocket failed**
+Ensure backend runs on port 8000.
+
+**Out of memory**
+Switch to smaller model: `qwen2.5:1.5b`.
+
+---
+
+# 📦 Tech Stack
+
+| Component  | Technology              |
+| ---------- | ----------------------- |
+| Frontend   | Vanilla HTML/CSS/JS     |
+| Backend    | FastAPI + Uvicorn       |
+| STT        | Faster-Whisper (medium) |
+| Embeddings | Nomic via Ollama        |
+| Vector DB  | Qdrant                  |
+| LLM        | Qwen2.5-3B via Ollama   |
+| TTS        | Piper TTS               |
+| Transport  | WebSocket               |
 
 ---
 
