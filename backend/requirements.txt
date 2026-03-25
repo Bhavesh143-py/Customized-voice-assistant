@@ -1,0 +1,54 @@
+# PVG College Voice Assistant — Backend Requirements
+# Python 3.11+ required
+
+# ── Web Framework ──────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+websockets==12.0
+python-multipart==0.0.9
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.35
+# For PostgreSQL (production): also install psycopg2-binary==2.9.9
+
+# ── Authentication ─────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# ── Validation & Config ────────────────────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+
+# ── STT — Faster Whisper ───────────────────────────────────────────────────────
+faster-whisper==1.0.3
+
+# ── Vector Database ────────────────────────────────────────────────────────────
+qdrant-client==1.11.1
+
+# ── LLM + Embeddings via Ollama ────────────────────────────────────────────────
+ollama==0.3.3
+
+# ── Audio Processing ───────────────────────────────────────────────────────────
+noisereduce==3.0.3
+scipy==1.13.1
+numpy==1.26.4
+
+# ── TTS — Google Indian English (requires internet, fallback) ──────────────────
+gtts==2.5.1
+# Piper TTS binary is installed separately — see README for instructions
+# Model: en_US-amy-medium (NOT bundled — place in ./tts_models/)
+
+# ── HTTP Client ────────────────────────────────────────────────────────────────
+httpx==0.27.2
+requests==2.32.3
+
+# ── Gemma/Transformers (optional — for local Gemma inference without Ollama) ───
+# Uncomment if you want to run Gemma directly via HuggingFace:
+# transformers==4.44.2
+# accelerate==0.34.2
+# torch==2.4.0  # CPU build — use torch==2.4.0+cu121 for GPU
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dateutil==2.9.0

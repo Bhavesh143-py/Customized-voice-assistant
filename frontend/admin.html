@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PVGCOET — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0f1724;
+      --surface:  #1a2540;
+      --surface2: #222f4a;
+      --border:   #2a3a58;
+      --blue:     #3b82f6;
+      --blue-dk:  #1d4ed8;
+      --blue-lt:  #60a5fa;
+      --white:    #ffffff;
+      --gray:     #94a3b8;
+      --gray-lt:  #cbd5e1;
+      --success:  #10b981;
+      --danger:   #ef4444;
+      --warning:  #f59e0b;
+      --radius:   12px;
+    }
+    html, body { height: 100%; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--white); display: flex; flex-direction: column; }
+
+    /* ── LOGIN SCREEN ───────────────────────────────────────────── */
+    #loginScreen {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(29,78,216,.15) 0%, transparent 70%);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.4);
+    }
+    .login-logo { text-align: center; margin-bottom: 32px; }
+    .login-logo h1 { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--white); }
+    .login-logo p  { font-size: .82rem; color: var(--gray); margin-top: 4px; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: .8rem; font-weight: 500; color: var(--gray-lt); margin-bottom: 6px; letter-spacing: .03em; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 12px 16px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--white);
+      font-family: 'DM Sans', sans-serif; font-size: .9rem;
+      transition: border-color .2s; outline: none;
+    }
+    input:focus { border-color: var(--blue); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 11px 20px; border-radius: var(--radius); font-size: .88rem;
+      font-weight: 500; cursor: pointer; border: none; transition: all .2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-primary:hover { background: var(--blue-dk); }
+    .btn-danger  { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+    .btn-danger:hover  { background: rgba(239,68,68,.25); }
+    .btn-ghost   { background: transparent; color: var(--gray); border: 1px solid var(--border); }
+    .btn-ghost:hover   { background: var(--surface2); color: var(--white); }
+    .btn-sm { padding: 7px 14px; font-size: .8rem; }
+    .btn-full { width: 100%; }
+    .login-error { color: var(--danger); font-size: .82rem; text-align: center; margin-top: 12px; display: none; }
+
+    /* ── MAIN APP ───────────────────────────────────────────────── */
+    #app { flex: 1; display: none; flex-direction: column; }
+
+    /* TOPBAR */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 28px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 20px; }
+    .topbar-brand { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800; color: var(--white); }
+    .topbar-badge {
+      padding: 3px 10px; background: rgba(59,130,246,.15);
+      border: 1px solid rgba(59,130,246,.3); border-radius: 999px;
+      font-size: .72rem; color: var(--blue-lt); font-weight: 500;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .admin-name { font-size: .84rem; color: var(--gray); }
+
+    /* LAYOUT */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 220px; flex-shrink: 0; background: var(--surface);
+      border-right: 1px solid var(--border); padding: 20px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: var(--radius);
+      font-size: .88rem; color: var(--gray); cursor: pointer;
+      transition: all .15s; user-select: none;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--white); }
+    .nav-item.active { background: rgba(59,130,246,.15); color: var(--blue-lt); }
+    .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+    .nav-section-label {
+      font-size: .7rem; font-weight: 600; color: var(--gray);
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 12px 14px 4px;
+    }
+
+    /* CONTENT */
+    .content { flex: 1; overflow-y: auto; padding: 28px; }
+    .content::-webkit-scrollbar { width: 6px; }
+    .content::-webkit-scrollbar-track { background: transparent; }
+    .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* PAGE SECTIONS */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* SECTION HEADER */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .section-header h2 { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .section-header p { font-size: .84rem; color: var(--gray); margin-top: 2px; }
+
+    /* STAT CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .stat-label { font-size: .78rem; color: var(--gray); text-transform: uppercase; letter-spacing: .06em; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: var(--white); margin-top: 6px; }
+    .stat-sub { font-size: .78rem; color: var(--success); margin-top: 4px; }
+
+    /* FORM CARD */
+    .form-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 24px;
+    }
+    .form-card h3 { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; margin-bottom: 18px; color: var(--white); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    textarea {
+      width: 100%; padding: 12px 16px; min-height: 80px; resize: vertical;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--white);
+      font-family: 'DM Sans', sans-serif; font-size: .9rem; outline: none;
+      transition: border-color .2s;
+    }
+    textarea:focus { border-color: var(--blue); }
+    .form-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .field-error { color: var(--danger); font-size: .75rem; margin-top: 4px; display: none; }
+
+    /* TABLE */
+    .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .table-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .table-card-header h3 { font-family: 'Syne', sans-serif; font-size: .9rem; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 12px 16px; font-size: .75rem;
+      font-weight: 600; color: var(--gray); text-transform: uppercase;
+      letter-spacing: .05em; border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,.1);
+    }
+    td {
+      padding: 14px 16px; font-size: .86rem; color: var(--gray-lt);
+      border-bottom: 1px solid rgba(42,58,88,.5); vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .td-title { color: var(--white); font-weight: 500; }
+    .td-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: .72rem; font-weight: 600;
+    }
+    .td-badge.green { background: rgba(16,185,129,.15); color: #34d399; }
+    .td-actions { display: flex; gap: 6px; }
+
+    /* EMPTY STATE */
+    .empty-table { text-align: center; padding: 48px 20px; color: var(--gray); }
+    .empty-table .icon { font-size: 2.5rem; margin-bottom: 12px; opacity: .5; }
+    .empty-table p { font-size: .9rem; }
+
+    /* TOAST */
+    .toast-admin {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 12px 20px; border-radius: var(--radius);
+      font-size: .86rem; font-weight: 500; color: white;
+      transform: translateY(80px); transition: transform .3s;
+      z-index: 1000; border: 1px solid transparent;
+    }
+    .toast-admin.show { transform: translateY(0); }
+    .toast-admin.success { background: rgba(16,185,129,.95); border-color: #34d399; }
+    .toast-admin.error   { background: rgba(239,68,68,.95); border-color: #f87171; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      z-index: 500; display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; width: 100%; max-width: 480px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    }
+    .modal h3 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* LOADING SPINNER */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3); border-top-color: white;
+      border-radius: 50%; animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+    .fade-in { animation: fadeIn .3s ease; }
+
+    /* RESPONSIVE */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────────────────────────────────── -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>⚙ Admin Dashboard</h1>
+      <p>PVGCOET Voice Assistant Management</p>
+    </div>
+    <div class="form-group">
+      <label for="loginUser">Username</label>
+      <input type="text" id="loginUser" placeholder="admin" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label for="loginPass">Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()" id="loginBtn">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ───────────────────────────────────────────────────── -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-brand">PVGCOET Admin</span>
+      <span class="topbar-badge">Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <span class="admin-name" id="adminName"></span>
+      <a href="index.html" class="btn btn-ghost btn-sm">← Voice Assistant</a>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">🏠</span> Dashboard
+      </div>
+      <div class="nav-section-label">Manage</div>
+      <div class="nav-item" onclick="showSection('events')" id="nav-events">
+        <span class="nav-icon">📅</span> Events
+      </div>
+      <div class="nav-item" onclick="showSection('notifications')" id="nav-notifications">
+        <span class="nav-icon">🔔</span> Notifications
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- ── DASHBOARD ─────────────────────────────────────────── -->
+      <section class="page-section active" id="section-dashboard">
+        <div class="section-header">
+          <div>
+            <h2>Dashboard</h2>
+            <p>Overview of all college content</p>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Events</div>
+            <div class="stat-value" id="statEvents">—</div>
+            <div class="stat-sub">Active events</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Upcoming Events</div>
+            <div class="stat-value" id="statUpcoming">—</div>
+            <div class="stat-sub">From today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Notifications</div>
+            <div class="stat-value" id="statNotifs">—</div>
+            <div class="stat-sub">Active notices</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <!-- Recent Events -->
+          <div class="table-card">
+            <div class="table-card-header"><h3>Recent Events</h3></div>
+            <div id="dashEvents"><div class="empty-table"><div class="icon">📅</div><p>No events yet</p></div></div>
+          </div>
+          <!-- Recent Notifications -->
+          <div class="table-card">
+            <div class="table-card-header"><h3>Recent Notifications</h3></div>
+            <div id="dashNotifs"><div class="empty-table"><div class="icon">🔔</div><p>No notifications yet</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── EVENTS ─────────────────────────────────────────────── -->
+      <section class="page-section" id="section-events">
+        <div class="section-header">
+          <div><h2>Events</h2><p>Manage college events and seminars</p></div>
+          <button class="btn btn-primary" onclick="openEventForm()">+ Add Event</button>
+        </div>
+
+        <!-- Form (hidden by default) -->
+        <div class="form-card" id="eventFormCard" style="display:none">
+          <h3 id="eventFormTitle">Add New Event</h3>
+          <input type="hidden" id="editEventId"/>
+          <div class="form-grid">
+            <div class="full">
+              <label>Event Title *</label>
+              <input type="text" id="evTitle" placeholder="e.g. Tech Fest 2025"/>
+              <div class="field-error" id="evTitleErr">Title is required</div>
+            </div>
+            <div>
+              <label>Date *</label>
+              <input type="date" id="evDate"/>
+              <div class="field-error" id="evDateErr">Date is required</div>
+            </div>
+            <div>
+              <label>Time</label>
+              <input type="time" id="evTime"/>
+            </div>
+            <div class="full">
+              <label>Location</label>
+              <input type="text" id="evLocation" placeholder="e.g. Main Auditorium"/>
+            </div>
+            <div class="full">
+              <label>Description</label>
+              <textarea id="evDesc" placeholder="Event details…"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="submitEvent()" id="evSubmitBtn">Save Event</button>
+            <button class="btn btn-ghost" onclick="closeEventForm()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>All Events</h3>
+            <button class="btn btn-ghost btn-sm" onclick="loadEvents()">↻ Refresh</button>
+          </div>
+          <div id="eventsTable"><div class="empty-table"><div class="spinner"></div><p>Loading…</p></div></div>
+        </div>
+      </section>
+
+      <!-- ── NOTIFICATIONS ──────────────────────────────────────── -->
+      <section class="page-section" id="section-notifications">
+        <div class="section-header">
+          <div><h2>Notifications</h2><p>Manage announcements and notices</p></div>
+          <button class="btn btn-primary" onclick="openNotifForm()">+ Add Notification</button>
+        </div>
+
+        <div class="form-card" id="notifFormCard" style="display:none">
+          <h3 id="notifFormTitle">Add Notification</h3>
+          <input type="hidden" id="editNotifId"/>
+          <div class="form-group">
+            <label>Title *</label>
+            <input type="text" id="ntTitle" placeholder="e.g. Exam Schedule Released"/>
+            <div class="field-error" id="ntTitleErr">Title is required</div>
+          </div>
+          <div class="form-group">
+            <label>Message *</label>
+            <textarea id="ntMessage" placeholder="Announcement details…" style="min-height:100px"></textarea>
+            <div class="field-error" id="ntMsgErr">Message is required</div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="submitNotif()" id="ntSubmitBtn">Save Notification</button>
+            <button class="btn btn-ghost" onclick="closeNotifForm()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>All Notifications</h3>
+            <button class="btn btn-ghost btn-sm" onclick="loadNotifications()">↻ Refresh</button>
+          </div>
+          <div id="notifsTable"><div class="empty-table"><div class="spinner"></div><p>Loading…</p></div></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── DELETE CONFIRM MODAL ──────────────────────────────────────── -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>Confirm Delete</h3>
+    <p id="deleteModalMsg" style="color:var(--gray);font-size:.9rem;margin-bottom:8px;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-admin" id="adminToast"></div>
+
+<script>
+/* ── CONFIG ─────────────────────────────────────────────────────── */
+const API = window.location.protocol + '//' + window.location.hostname + ':8000/api';
+
+let authToken   = localStorage.getItem('pvg_admin_token') || '';
+let currentUser = localStorage.getItem('pvg_admin_user')  || '';
+let deleteTarget = { type: '', id: null };
+
+/* ── AUTH ───────────────────────────────────────────────────────── */
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
+
+  if (!username || !password) { showLoginErr('Please enter username and password.'); return; }
+
+  btn.innerHTML = '<span class="spinner"></span> Signing in…'; btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showLoginErr(data.detail || 'Login failed.'); return; }
+
+    authToken   = data.access_token;
+    currentUser = data.username;
+    localStorage.setItem('pvg_admin_token', authToken);
+    localStorage.setItem('pvg_admin_user',  currentUser);
+    enterApp();
+  } catch (e) {
+    showLoginErr('Cannot connect to server. Is the backend running?');
+  } finally {
+    btn.innerHTML = 'Sign In'; btn.disabled = false;
+  }
+}
+
+function showLoginErr(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function logout() {
+  authToken = ''; currentUser = '';
+  localStorage.removeItem('pvg_admin_token');
+  localStorage.removeItem('pvg_admin_user');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function enterApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('adminName').textContent = `👤 ${currentUser}`;
+  loadDashboard(); loadEvents(); loadNotifications();
+}
+
+// On load — if token exists, verify and enter
+window.addEventListener('load', async () => {
+  if (authToken) {
+    try {
+      const res = await fetch(`${API}/auth/me`, { headers: authHeader() });
+      if (res.ok) { enterApp(); return; }
+    } catch {}
+    logout();
+  }
+  // Listen for Enter key on login form
+  document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+});
+
+function authHeader() { return { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }; }
+
+/* ── NAVIGATION ─────────────────────────────────────────────────── */
+function showSection(name) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+}
+
+/* ── DASHBOARD ──────────────────────────────────────────────────── */
+async function loadDashboard() {
+  const [evRes, notifRes, upRes] = await Promise.all([
+    fetch(`${API}/events`,             { headers: authHeader() }),
+    fetch(`${API}/notifications`,      { headers: authHeader() }),
+    fetch(`${API}/events/upcoming`,    { headers: authHeader() }),
+  ]);
+  const events  = evRes.ok    ? await evRes.json()    : [];
+  const notifs  = notifRes.ok ? await notifRes.json() : [];
+  const upcoming= upRes.ok    ? await upRes.json()    : [];
+
+  document.getElementById('statEvents').textContent   = events.length;
+  document.getElementById('statUpcoming').textContent = upcoming.length;
+  document.getElementById('statNotifs').textContent   = notifs.length;
+
+  // Recent events mini list
+  const evEl = document.getElementById('dashEvents');
+  if (events.length === 0) {
+    evEl.innerHTML = `<div class="empty-table"><div class="icon">📅</div><p>No events yet</p></div>`;
+  } else {
+    evEl.innerHTML = `<table><thead><tr><th>Title</th><th>Date</th></tr></thead><tbody>
+      ${events.slice(0,5).map(e=>`<tr><td class="td-title">${esc(e.title)}</td><td>${e.date}</td></tr>`).join('')}
+    </tbody></table>`;
+  }
+
+  // Recent notifs mini list
+  const ntEl = document.getElementById('dashNotifs');
+  if (notifs.length === 0) {
+    ntEl.innerHTML = `<div class="empty-table"><div class="icon">🔔</div><p>No notifications yet</p></div>`;
+  } else {
+    ntEl.innerHTML = `<table><thead><tr><th>Title</th><th>Date</th></tr></thead><tbody>
+      ${notifs.slice(0,5).map(n=>`<tr><td class="td-title">${esc(n.title)}</td><td>${fmtDate(n.timestamp)}</td></tr>`).join('')}
+    </tbody></table>`;
+  }
+}
+
+/* ── EVENTS ─────────────────────────────────────────────────────── */
+let allEvents = [];
+
+async function loadEvents() {
+  const res = await fetch(`${API}/events`, { headers: authHeader() });
+  allEvents  = res.ok ? await res.json() : [];
+  renderEventsTable();
+}
+
+function renderEventsTable() {
+  const el = document.getElementById('eventsTable');
+  if (allEvents.length === 0) {
+    el.innerHTML = `<div class="empty-table"><div class="icon">📅</div><p>No events yet. Click "+ Add Event" to create one.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Location</th><th>Actions</th></tr></thead>
+    <tbody>
+      ${allEvents.map(e => `<tr class="fade-in">
+        <td class="td-title">${esc(e.title)}</td>
+        <td>${e.date}</td>
+        <td>${e.time || '—'}</td>
+        <td>${esc(e.location||'—')}</td>
+        <td><div class="td-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editEvent(${e.id})">✏ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('event',${e.id},'${esc(e.title).replace(/'/g,"\\'")}')">✕ Delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function openEventForm(event=null) {
+  document.getElementById('eventFormCard').style.display = 'block';
+  document.getElementById('eventFormCard').scrollIntoView({ behavior: 'smooth' });
+  if (event) {
+    document.getElementById('eventFormTitle').textContent = 'Edit Event';
+    document.getElementById('editEventId').value = event.id;
+    document.getElementById('evTitle').value    = event.title;
+    document.getElementById('evDate').value     = event.date;
+    document.getElementById('evTime').value     = event.time || '';
+    document.getElementById('evLocation').value = event.location || '';
+    document.getElementById('evDesc').value     = event.description || '';
+  } else {
+    document.getElementById('eventFormTitle').textContent = 'Add New Event';
+    document.getElementById('editEventId').value = '';
+    ['evTitle','evDate','evTime','evLocation','evDesc'].forEach(id => document.getElementById(id).value = '');
+  }
+  hideFieldErrors(['evTitleErr','evDateErr']);
+}
+
+function editEvent(id) {
+  const ev = allEvents.find(e => e.id === id);
+  if (ev) { showSection('events'); openEventForm(ev); }
+}
+
+function closeEventForm() { document.getElementById('eventFormCard').style.display = 'none'; }
+
+async function submitEvent() {
+  const id    = document.getElementById('editEventId').value;
+  const title = document.getElementById('evTitle').value.trim();
+  const date  = document.getElementById('evDate').value;
+  let valid = true;
+
+  if (!title) { showFieldError('evTitleErr'); valid = false; }
+  if (!date)  { showFieldError('evDateErr');  valid = false; }
+  if (!valid) return;
+
+  const payload = {
+    title, date,
+    time:        document.getElementById('evTime').value || null,
+    location:    document.getElementById('evLocation').value.trim() || null,
+    description: document.getElementById('evDesc').value.trim() || null,
+  };
+
+  const btn = document.getElementById('evSubmitBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+
+  try {
+    const url    = id ? `${API}/events/${id}` : `${API}/events`;
+    const method = id ? 'PUT' : 'POST';
+    const res    = await fetch(url, { method, headers: authHeader(), body: JSON.stringify(payload) });
+    if (!res.ok) { const d = await res.json(); showToastAdmin(d.detail||'Save failed.','error'); return; }
+    showToastAdmin(id ? 'Event updated!' : 'Event created!', 'success');
+    closeEventForm(); await loadEvents(); await loadDashboard();
+  } catch (e) {
+    showToastAdmin('Network error.', 'error');
+  } finally {
+    btn.innerHTML = 'Save Event'; btn.disabled = false;
+  }
+}
+
+/* ── NOTIFICATIONS ──────────────────────────────────────────────── */
+let allNotifs = [];
+
+async function loadNotifications() {
+  const res = await fetch(`${API}/notifications`, { headers: authHeader() });
+  allNotifs  = res.ok ? await res.json() : [];
+  renderNotifsTable();
+}
+
+function renderNotifsTable() {
+  const el = document.getElementById('notifsTable');
+  if (allNotifs.length === 0) {
+    el.innerHTML = `<div class="empty-table"><div class="icon">🔔</div><p>No notifications yet. Click "+ Add Notification" to post one.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr><th>Title</th><th>Message</th><th>Posted</th><th>Actions</th></tr></thead>
+    <tbody>
+      ${allNotifs.map(n => `<tr class="fade-in">
+        <td class="td-title">${esc(n.title)}</td>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.message)}</td>
+        <td>${fmtDate(n.timestamp)}</td>
+        <td><div class="td-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editNotif(${n.id})">✏ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('notif',${n.id},'${esc(n.title).replace(/'/g,"\\'")}')">✕ Delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function openNotifForm(notif=null) {
+  document.getElementById('notifFormCard').style.display = 'block';
+  document.getElementById('notifFormCard').scrollIntoView({ behavior: 'smooth' });
+  if (notif) {
+    document.getElementById('notifFormTitle').textContent = 'Edit Notification';
+    document.getElementById('editNotifId').value = notif.id;
+    document.getElementById('ntTitle').value   = notif.title;
+    document.getElementById('ntMessage').value = notif.message;
+  } else {
+    document.getElementById('notifFormTitle').textContent = 'Add Notification';
+    document.getElementById('editNotifId').value = '';
+    document.getElementById('ntTitle').value   = '';
+    document.getElementById('ntMessage').value = '';
+  }
+  hideFieldErrors(['ntTitleErr','ntMsgErr']);
+}
+
+function editNotif(id) {
+  const n = allNotifs.find(n => n.id === id);
+  if (n) { showSection('notifications'); openNotifForm(n); }
+}
+
+function closeNotifForm() { document.getElementById('notifFormCard').style.display = 'none'; }
+
+async function submitNotif() {
+  const id      = document.getElementById('editNotifId').value;
+  const title   = document.getElementById('ntTitle').value.trim();
+  const message = document.getElementById('ntMessage').value.trim();
+  let valid = true;
+
+  if (!title)   { showFieldError('ntTitleErr'); valid = false; }
+  if (!message) { showFieldError('ntMsgErr');   valid = false; }
+  if (!valid) return;
+
+  const btn = document.getElementById('ntSubmitBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+
+  try {
+    const url    = id ? `${API}/notifications/${id}` : `${API}/notifications`;
+    const method = id ? 'PUT' : 'POST';
+    const res    = await fetch(url, { method, headers: authHeader(), body: JSON.stringify({ title, message }) });
+    if (!res.ok) { const d = await res.json(); showToastAdmin(d.detail||'Save failed.','error'); return; }
+    showToastAdmin(id ? 'Notification updated!' : 'Notification posted!', 'success');
+    closeNotifForm(); await loadNotifications(); await loadDashboard();
+  } catch {
+    showToastAdmin('Network error.', 'error');
+  } finally {
+    btn.innerHTML = 'Save Notification'; btn.disabled = false;
+  }
+}
+
+/* ── DELETE MODAL ───────────────────────────────────────────────── */
+function openDeleteModal(type, id, name) {
+  deleteTarget = { type, id };
+  document.getElementById('deleteModalMsg').textContent = `Delete "${name}"? This cannot be undone.`;
+  document.getElementById('deleteModal').classList.add('open');
+}
+function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('open'); }
+
+async function confirmDelete() {
+  const { type, id } = deleteTarget;
+  const btn = document.getElementById('deleteConfirmBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  try {
+    const url = type === 'event' ? `${API}/events/${id}` : `${API}/notifications/${id}`;
+    const res = await fetch(url, { method: 'DELETE', headers: authHeader() });
+    if (res.ok || res.status === 204) {
+      showToastAdmin('Deleted successfully.', 'success');
+      closeDeleteModal();
+      if (type === 'event') { await loadEvents(); } else { await loadNotifications(); }
+      await loadDashboard();
+    } else {
+      showToastAdmin('Delete failed.', 'error');
+    }
+  } catch { showToastAdmin('Network error.', 'error'); }
+  finally { btn.innerHTML = 'Delete'; btn.disabled = false; }
+}
+
+/* ── HELPERS ────────────────────────────────────────────────────── */
+let toastTimer;
+function showToastAdmin(msg, type='success') {
+  const el = document.getElementById('adminToast');
+  el.textContent = msg; el.className = `toast-admin ${type} show`;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+function showFieldError(id)   { document.getElementById(id).style.display = 'block'; }
+function hideFieldErrors(ids) { ids.forEach(id => document.getElementById(id).style.display = 'none'); }
+function esc(t='') { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}); }
+  catch { return ts; }
+}
+
+// Close modal on overlay click
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
+});
+</script>
+</body>
+</html>
