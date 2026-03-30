@@ -12,8 +12,10 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import threading
+import time
 import uuid
 import wave
 from collections import deque
@@ -21,7 +23,7 @@ from pathlib import Path
 from typing import Dict
 
 import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from faster_whisper import WhisperModel
@@ -44,8 +46,10 @@ WHISPER_MODEL_SIZE = os.getenv(
     "WHISPER_MODEL_SIZE",
     "/home/apollo/.cache/huggingface/hub/models--Systran--faster-whisper-medium.en/snapshots/a29b04bd15381511a9af671baec01072039215e3"
 )
-WHISPER_DEVICE     = "cpu"
-WHISPER_COMPUTE    = "int8"
+WHISPER_DEVICE     = os.getenv("WHISPER_DEVICE", "cpu")
+WHISPER_COMPUTE    = os.getenv("WHISPER_COMPUTE", "int8")
+WHISPER_CPU_THREADS = int(os.getenv("WHISPER_CPU_THREADS", "4"))
+WHISPER_NUM_WORKERS = int(os.getenv("WHISPER_NUM_WORKERS", "1"))
 OLLAMA_LLM_MODEL   = os.getenv("OLLAMA_LLM_MODEL",  "qwen2.5:3b")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 QDRANT_HOST        = os.getenv("QDRANT_HOST",        "localhost")
@@ -74,8 +78,8 @@ Only answer from the provided context. If unsure, say so politely. Do NOT fabric
 # ── INIT ───────────────────────────────────────────────────────────────────────
 log.info("Loading Faster-Whisper (%s)...", WHISPER_MODEL_SIZE)
 whisper_model = WhisperModel(WHISPER_MODEL_SIZE, device=WHISPER_DEVICE,
-                              compute_type=WHISPER_COMPUTE, cpu_threads=4, num_workers=1)
-log.info("Whisper ready.")
+                              compute_type=WHISPER_COMPUTE, cpu_threads=WHISPER_CPU_THREADS, num_workers=WHISPER_NUM_WORKERS)
+log.info("Whisper ready on device=%s compute_type=%s.", WHISPER_DEVICE, WHISPER_COMPUTE)
 
 qdrant        = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 ollama_client = ollama.Client(host=f"http://{OLLAMA_HOST}:{OLLAMA_PORT}")
@@ -84,6 +88,20 @@ sessions: Dict[str, deque] = {}
 
 app = FastAPI(title="PVG Voice Assistant")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://admin_user:admin_pass@sql_database:5432/admin_db"
+)
+INGEST_SCRIPT_PATH = os.getenv("INGEST_SCRIPT_PATH", "/app/scripts/ingest.py")
+
+sync_lock = asyncio.Lock()
+sync_state = {
+    "in_progress": False,
+    "last_sync_at": None,
+    "last_status": "never_run",
+    "last_message": "Sync has not been run yet.",
+    "duration_seconds": None,
+}
 
 
 # ── AUDIO PREPROCESSING ────────────────────────────────────────────────────────
@@ -193,6 +211,15 @@ async def run_pipeline(ws: WebSocket, transcript: str, session_id: str):
     │    {"type":"audio_done"}                                │
     └─────────────────────────────────────────────────────────┘
     """
+    if sync_state["in_progress"]:
+        await ws.send_json(
+            {
+                "type": "error",
+                "message": "Knowledge sync is in progress. Please retry in a moment.",
+            }
+        )
+        return
+
     loop = asyncio.get_event_loop()
 
     # 1. RAG ───────────────────────────────────────────────────────────────────
@@ -366,11 +393,125 @@ async def voice_ws(websocket: WebSocket):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "llm": OLLAMA_LLM_MODEL, "stt": WHISPER_MODEL_SIZE}
+    return {
+        "status": "ok",
+        "llm": OLLAMA_LLM_MODEL,
+        "stt": WHISPER_MODEL_SIZE,
+        "whisper_device": WHISPER_DEVICE,
+        "whisper_compute_type": WHISPER_COMPUTE,
+    }
 
 @app.get("/")
 async def root():
     return {"message": "PVG Voice Assistant API running."}
+
+
+async def run_sync_job() -> dict:
+    log.info(
+        "run_sync_job started: ingest_script_path=%s database_url=%s",
+        INGEST_SCRIPT_PATH,
+        DATABASE_URL,
+    )
+    if not Path(INGEST_SCRIPT_PATH).exists():
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ingest script not found at {INGEST_SCRIPT_PATH}",
+        )
+
+    started_at = time.perf_counter()
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable,
+        INGEST_SCRIPT_PATH,
+        "--database_url",
+        DATABASE_URL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    duration = round(time.perf_counter() - started_at, 2)
+
+    out_text = stdout.decode("utf-8", errors="ignore").strip()
+    err_text = stderr.decode("utf-8", errors="ignore").strip()
+
+    if proc.returncode != 0:
+        sync_state.update(
+            {
+                "last_status": "failed",
+                "last_message": err_text or out_text or "Sync failed",
+                "duration_seconds": duration,
+            }
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Ingest failed.",
+                "return_code": proc.returncode,
+                "stderr": err_text,
+                "stdout": out_text,
+            },
+        )
+
+    sync_state.update(
+        {
+            "last_status": "success",
+            "last_message": "Ingest completed successfully.",
+            "duration_seconds": duration,
+        }
+    )
+    return {
+        "message": "Ingest completed successfully.",
+        "duration_seconds": duration,
+        "stdout": out_text,
+        "stderr": err_text,
+    }
+
+
+async def _sync_documents_impl():
+    log.info(
+        "_sync_documents_impl called: lock_locked=%s in_progress=%s last_status=%s",
+        sync_lock.locked(),
+        sync_state["in_progress"],
+        sync_state["last_status"],
+    )
+    if sync_lock.locked():
+        log.warning("_sync_documents_impl rejected: sync already in progress")
+        raise HTTPException(
+            status_code=409, detail="A sync job is already in progress."
+        )
+
+    async with sync_lock:
+        sync_state["in_progress"] = True
+        log.info("_sync_documents_impl started: sync_state=%s", sync_state)
+        try:
+            result = await run_sync_job()
+            sync_state["last_sync_at"] = time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+            )
+            log.info(
+                "_sync_documents_impl success: last_sync_at=%s",
+                sync_state["last_sync_at"],
+            )
+            return result
+        finally:
+            sync_state["in_progress"] = False
+            log.info("_sync_documents_impl finished: sync_state=%s", sync_state)
+
+
+async def _sync_status_impl():
+    return sync_state
+
+
+@app.post("/admin/sync-documents")
+async def sync_documents_admin():
+    log.info("Route hit: POST /admin/sync-documents")
+    return await _sync_documents_impl()
+
+
+@app.get("/admin/sync-status")
+async def sync_status_admin():
+    log.info("Route hit: GET /admin/sync-status")
+    return await _sync_status_impl()
+
 
 if __name__ == "__main__":
     import uvicorn

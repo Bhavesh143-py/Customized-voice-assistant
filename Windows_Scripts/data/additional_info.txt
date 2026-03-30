@@ -1,0 +1,101 @@
+
+PVG’s College of Engineering, Technology & Management, Pune
+Additional Institutional Information Dataset
+
+------------------------------------------------------------
+0. Establishment
+------------------------------------------------------------
+The college was established in 1985.
+
+------------------------------------------------------------
+1. Affiliation
+------------------------------------------------------------
+The college is affiliated with Savitribai Phule Pune University (SPPU).
+
+------------------------------------------------------------
+2. Accreditation
+------------------------------------------------------------
+NAAC Accredited with ‘A’ Grade.
+
+------------------------------------------------------------
+3. Leadership
+------------------------------------------------------------
+Director:
+- Shri. Sunil Redekar
+- Prof. R. G. Kaduskar
+
+Principal:
+- Dr. Manoj R. Tarambale
+
+------------------------------------------------------------
+4. Heads of Departments (HoDs)
+------------------------------------------------------------
+Printing & Packaging Technology:
+- Prof. Madhura P. Mahajan
+
+Mechanical Engineering:
+- Dr. M. M. Bhoomkar
+
+Electrical Engineering:
+- Dr. M. S. Thakare, Ph.D. (IIT Bombay)
+
+Information Technology:
+- Prof. Dr. S. A. Mahajan
+
+Computer Engineering:
+- Prof. Mrs. Urmila M. Kalshetti
+
+Electronics & Telecommunication Engineering:
+- Dr. Prasanna G. Shete
+
+Artificial Intelligence & Data Science:
+- Dr. Minakshi P. Atre
+
+------------------------------------------------------------
+5. Department-wise Intake Capacity
+------------------------------------------------------------
+Artificial Intelligence & Data Science: 60
+Computer Engineering: 60
+Information Technology: 60
+Electrical Engineering: 60
+Printing & Packaging Technology: 60
+Mechanical Engineering: 120
+Electronics & Telecommunication Engineering: 120
+
+------------------------------------------------------------
+6. Total Admission Fees (Category-wise)
+------------------------------------------------------------
+OPEN: ₹1,23,701
+OBC / EBC / SEBC / EWS: ₹70,644
+SBC / VJ / DT / NT / TFWS: ₹17,587
+SC / ST / PMSSS: ₹2,201
+
+------------------------------------------------------------
+7. Infrastructure & Facilities
+------------------------------------------------------------
+- Variety of books available in the central library.
+- Digital library and reference resources available.
+- All classrooms are smart classrooms.
+- Well-maintained campus environment.
+- Mess and canteen facilities available.
+
+------------------------------------------------------------
+8. Festivals
+------------------------------------------------------------
+- Samsara — Cultural Fest
+- Ranasangram — Sports Events
+
+------------------------------------------------------------
+9. Student Development
+------------------------------------------------------------
+- Various student clubs and activity groups are present.
+
+------------------------------------------------------------
+10. Safety & Student Support
+------------------------------------------------------------
+- Campus security is maintained.
+- Medical support facilities are available.
+- Anti-Ragging Committee is active.
+
+------------------------------------------------------------
+End of File

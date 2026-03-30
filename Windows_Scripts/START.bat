@@ -19,6 +19,9 @@ echo.
 echo ==================================================
 echo   PVG Voice Assistant is running!
 echo   Open: http://localhost:3000
+echo ==================================================
+echo   PVG Admin Dashboard is Running!
+echo   Open: http://localhost:3001
 echo   To stop: double-click STOP.bat
 echo ==================================================
 

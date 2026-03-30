@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>PVG Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            background: #f5f5f5;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            width: 100%;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px;
+            font-family: monospace;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: scroll;
+        }
+
+        .panel {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            background: #fafafa;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        .danger {
+            background: #d32f2f;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Admin Document Panel</h2>
+
+        <div class="section">
+            <form id="uploadForm">
+                <input type="file" id="fileInput" name="files" accept=".txt,.pdf" multiple required>
+                <button type="submit">Upload Files</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h3>Stored Documents (SQL)</h3>
+            <button id="refreshDocsBtn" type="button">Refresh Documents</button>
+            <button id="syncDocsBtn" type="button">Sync New/Updated Documents</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Filename</th>
+                        <th>Type</th>
+                        <th>Uploaded At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="docsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="panel">
+            <h3>User Logs (Hardcoded API)</h3>
+            <button id="refreshLogsBtn" type="button">Refresh Logs</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="log-box" id="logs">
+            <b>Logs:</b><br>
+            [INFO] Panel loaded.<br>
+            [INFO] Ready to upload .txt/.pdf files.
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8080";
+        const uploadForm = document.getElementById("uploadForm");
+        const logs = document.getElementById("logs");
+        const docsTableBody = document.getElementById("docsTableBody");
+        const logsTableBody = document.getElementById("logsTableBody");
+        const refreshDocsBtn = document.getElementById("refreshDocsBtn");
+        const syncDocsBtn = document.getElementById("syncDocsBtn");
+        const refreshLogsBtn = document.getElementById("refreshLogsBtn");
+
+        function appendLog(message) {
+            logs.innerHTML += `<br>${message}`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        async function loadDocuments() {
+            const res = await fetch(`${API_BASE}/documents`);
+            if (!res.ok) throw new Error("Failed to fetch documents");
+            const docs = await res.json();
+
+            docsTableBody.innerHTML = "";
+            for (const doc of docs) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${doc.id}</td>
+                    <td>${doc.filename}</td>
+                    <td>${doc.extension}</td>
+                    <td>${doc.uploaded_at}</td>
+                    <td><button class="danger" data-doc-id="${doc.id}">Delete</button></td>
+                `;
+                docsTableBody.appendChild(tr);
+            }
+        }
+        
+        async function loadLogs() {
+            const res = await fetch(`${API_BASE}/logs`);
+            if (!res.ok) throw new Error("Failed to fetch logs");
+            const entries = await res.json();
+
+            logsTableBody.innerHTML = "";
+            for (const row of entries) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td>${row.user}</td>
+                    <td>${row.action}</td>
+                    <td>${row.details}</td>
+                    <td>${row.timestamp}</td>
+                `;
+                logsTableBody.appendChild(tr);
+            }
+        }
+
+        uploadForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            let files = document.getElementById("fileInput").files;
+            if (!files.length) return;
+
+            for (let file of files) {
+                let formData = new FormData();
+                formData.append("file", file);
+
+                appendLog(`[INFO] Uploading: ${file.name}...`);
+
+                let res = await fetch(`${API_BASE}/documents`, {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    appendLog(`[ERROR] ${file.name}: ${data.detail || "Upload failed"}`);
+                    continue;
+                }
+
+                appendLog(`[SUCCESS] Uploaded: ${data.filename} (id=${data.id})`);
+            }
+
+            appendLog("[DONE] Upload flow completed.");
+            await loadDocuments();
+            await loadLogs();
+        });
+
+        refreshDocsBtn.addEventListener("click", loadDocuments);
+        syncDocsBtn.addEventListener("click", async function () {
+            syncDocsBtn.disabled = true;
+            appendLog("[INFO] Sync requested. Assistant will pause while re-indexing.");
+            try {
+                const res = await fetch(`${API_BASE}/sync-documents`, { method: "POST" });
+                const data = await res.json();
+                if (!res.ok) {
+                    appendLog(`[ERROR] Sync failed: ${data.detail || "Unknown error"}`);
+                    return;
+                }
+                appendLog(`[SUCCESS] ${data.message}`);
+                appendLog(`[INFO] ${data.sync.message}`);
+            } catch (error) {
+                appendLog(`[ERROR] Sync request failed: ${error.message}`);
+            } finally {
+                syncDocsBtn.disabled = false;
+            }
+        });
+        refreshLogsBtn.addEventListener("click", loadLogs);
+
+        docsTableBody.addEventListener("click", async function (event) {
+            const target = event.target;
+            if (!target.matches("button[data-doc-id]")) return;
+
+            const docId = target.getAttribute("data-doc-id");
+            const res = await fetch(`${API_BASE}/documents/${docId}`, { method: "DELETE" });
+            if (!res.ok) {
+                appendLog(`[ERROR] Failed to delete document id=${docId}`);
+                return;
+            }
+
+            appendLog(`[INFO] Deleted document id=${docId}`);
+            await loadDocuments();
+        });
+
+        (async function init() {
+            try {
+                await loadDocuments();
+                await loadLogs();
+                appendLog("[INFO] Initial data loaded from backend.");
+            } catch (error) {
+                appendLog(`[ERROR] ${error.message}`);
+            }
+        })();
+    </script>
+
+</body>
+
+</html>
