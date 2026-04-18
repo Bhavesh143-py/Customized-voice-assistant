@@ -139,10 +139,12 @@ services:
       - QDRANT_PORT=6333
       - OLLAMA_HOST=pvg_ollama
       - OLLAMA_PORT=11434
+      - DATABASE_URL=postgresql://admin_user:admin_pass@sql_database:5432/admin_db
     depends_on:
       - qdrant
       - ollama
-    entrypoint: ["python3", "/app/scripts/ingest.py", "--data_dir", "/app/data"]
+      - sql_database
+    entrypoint: ["python3", "/app/scripts/ingest.py"]
     restart: "no"   # run once only
 
   # ── Frontend via Nginx ──────────────────────────────────────────────────────

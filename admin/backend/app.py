@@ -8,6 +8,7 @@ Run:
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 from urllib import error as urlerror
@@ -57,6 +58,60 @@ def initialize_database() -> None:
                 )
                 """
             )
+            cur.execute(
+                """
+                ALTER TABLE documents
+                ADD COLUMN IF NOT EXISTS updated_at TEXT NOT NULL DEFAULT ''
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE documents
+                ADD COLUMN IF NOT EXISTS content_hash TEXT NOT NULL DEFAULT ''
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE documents
+                ADD COLUMN IF NOT EXISTS sync_status TEXT NOT NULL DEFAULT 'pending'
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE documents
+                ADD COLUMN IF NOT EXISTS last_synced_at TEXT
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE documents
+                ADD COLUMN IF NOT EXISTS sync_error TEXT
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE documents
+                ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+            cur.execute(
+                """
+                UPDATE documents
+                SET
+                    updated_at = CASE
+                        WHEN updated_at = '' THEN uploaded_at
+                        ELSE updated_at
+                    END,
+                    content_hash = CASE
+                        WHEN content_hash = '' THEN md5(content)
+                        ELSE content_hash
+                    END,
+                    sync_status = CASE
+                        WHEN sync_status = '' THEN 'pending'
+                        ELSE sync_status
+                    END
+                """
+            )
         conn.commit()
 
 
@@ -95,6 +150,14 @@ def parse_uploaded_content(filename: str, raw: bytes) -> tuple[str, str]:
         )
 
     return ext, text
+
+
+def compute_content_hash(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def current_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 app = FastAPI(title="PVG Admin Backend", version="1.0.0")
@@ -149,27 +212,124 @@ async def upload_document(file: UploadFile = File(...)) -> dict[str, Any]:
 
     raw = await file.read()
     ext, content = parse_uploaded_content(file.filename, raw)
-    uploaded_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    uploaded_at = current_timestamp()
+    content_hash = compute_content_hash(content)
 
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO documents (filename, extension, content, uploaded_at)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id
+                SELECT id
+                FROM documents
+                WHERE filename = %s AND is_deleted = FALSE
+                ORDER BY id DESC
+                LIMIT 1
                 """,
-                (file.filename, ext, content, uploaded_at),
+                (file.filename,),
             )
-            row = cur.fetchone()
+            existing = cur.fetchone()
+
+            if existing is None:
+                cur.execute(
+                    """
+                    INSERT INTO documents (
+                        filename,
+                        extension,
+                        content,
+                        uploaded_at,
+                        updated_at,
+                        content_hash,
+                        sync_status,
+                        last_synced_at,
+                        sync_error,
+                        is_deleted
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, 'pending', NULL, NULL, FALSE)
+                    RETURNING id
+                    """,
+                    (file.filename, ext, content, uploaded_at, uploaded_at, content_hash),
+                )
+                row = cur.fetchone()
+                action = "uploaded"
+            else:
+                cur.execute(
+                    """
+                    UPDATE documents
+                    SET
+                        extension = %s,
+                        content = %s,
+                        updated_at = %s,
+                        content_hash = %s,
+                        sync_status = 'pending',
+                        last_synced_at = NULL,
+                        sync_error = NULL,
+                        is_deleted = FALSE
+                    WHERE id = %s
+                    RETURNING id, uploaded_at
+                    """,
+                    (ext, content, uploaded_at, content_hash, existing["id"]),
+                )
+                row = cur.fetchone()
+                action = "updated"
         conn.commit()
 
     return {
         "id": row["id"],
         "filename": file.filename,
         "extension": ext,
-        "uploaded_at": uploaded_at,
-        "message": "Document stored in SQL successfully.",
+        "uploaded_at": row.get("uploaded_at", uploaded_at),
+        "updated_at": uploaded_at,
+        "sync_status": "pending",
+        "action": action,
+        "message": f"Document {action} in SQL and marked for sync.",
+    }
+
+
+@app.put("/documents/{doc_id}")
+async def update_document(doc_id: int, file: UploadFile = File(...)) -> dict[str, Any]:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Missing file name.")
+
+    raw = await file.read()
+    ext, content = parse_uploaded_content(file.filename, raw)
+    updated_at = current_timestamp()
+    content_hash = compute_content_hash(content)
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE documents
+                SET
+                    filename = %s,
+                    extension = %s,
+                    content = %s,
+                    updated_at = %s,
+                    content_hash = %s,
+                    sync_status = 'pending',
+                    last_synced_at = NULL,
+                    sync_error = NULL,
+                    is_deleted = FALSE
+                WHERE id = %s AND is_deleted = FALSE
+                RETURNING id, uploaded_at
+                """,
+                (file.filename, ext, content, updated_at, content_hash, doc_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    return {
+        "id": row["id"],
+        "filename": file.filename,
+        "extension": ext,
+        "uploaded_at": row["uploaded_at"],
+        "updated_at": updated_at,
+        "sync_status": "pending",
+        "action": "updated",
+        "message": "Document updated in SQL and marked for sync.",
     }
 
 
@@ -179,8 +339,19 @@ def list_documents() -> list[dict[str, Any]]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, filename, extension, uploaded_at, LENGTH(content) AS content_length
+                SELECT
+                    id,
+                    filename,
+                    extension,
+                    uploaded_at,
+                    updated_at,
+                    is_deleted,
+                    sync_status,
+                    last_synced_at,
+                    sync_error,
+                    LENGTH(content) AS content_length
                 FROM documents
+                WHERE is_deleted = FALSE OR sync_status IN ('pending_delete', 'failed')
                 ORDER BY id DESC
                 """
             )
@@ -195,7 +366,17 @@ def get_document(doc_id: int) -> dict[str, Any]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, filename, extension, content, uploaded_at
+                SELECT
+                    id,
+                    filename,
+                    extension,
+                    content,
+                    uploaded_at,
+                    updated_at,
+                    is_deleted,
+                    sync_status,
+                    last_synced_at,
+                    sync_error
                 FROM documents
                 WHERE id = %s
                 """,
@@ -212,13 +393,24 @@ def get_document(doc_id: int) -> dict[str, Any]:
 def delete_document(doc_id: int) -> dict[str, str]:
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
+            cur.execute(
+                """
+                UPDATE documents
+                SET
+                    is_deleted = TRUE,
+                    sync_status = 'pending_delete',
+                    updated_at = %s,
+                    sync_error = NULL
+                WHERE id = %s AND is_deleted = FALSE
+                """,
+                (current_timestamp(), doc_id),
+            )
             deleted = cur.rowcount
         conn.commit()
 
     if deleted == 0:
         raise HTTPException(status_code=404, detail="Document not found.")
-    return {"message": "Document deleted successfully."}
+    return {"message": "Document marked for deletion and pending vector cleanup."}
 
 
 HARDCODED_LOGS: list[dict[str, Any]] = [

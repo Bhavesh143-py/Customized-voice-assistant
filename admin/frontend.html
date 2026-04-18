@@ -96,7 +96,9 @@
                         <th>ID</th>
                         <th>Filename</th>
                         <th>Type</th>
+                        <th>Sync Status</th>
                         <th>Uploaded At</th>
+                        <th>Updated At</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -151,12 +153,17 @@
             docsTableBody.innerHTML = "";
             for (const doc of docs) {
                 const tr = document.createElement("tr");
+                const actionCell = doc.is_deleted
+                    ? "<span>Awaiting sync</span>"
+                    : `<button class="danger" data-doc-id="${doc.id}">Delete</button>`;
                 tr.innerHTML = `
                     <td>${doc.id}</td>
                     <td>${doc.filename}</td>
                     <td>${doc.extension}</td>
+                    <td>${doc.sync_status}</td>
                     <td>${doc.uploaded_at}</td>
-                    <td><button class="danger" data-doc-id="${doc.id}">Delete</button></td>
+                    <td>${doc.updated_at}</td>
+                    <td>${actionCell}</td>
                 `;
                 docsTableBody.appendChild(tr);
             }
@@ -204,7 +211,7 @@
                     continue;
                 }
 
-                appendLog(`[SUCCESS] Uploaded: ${data.filename} (id=${data.id})`);
+                appendLog(`[SUCCESS] ${data.action.toUpperCase()}: ${data.filename} (id=${data.id}, status=${data.sync_status})`);
             }
 
             appendLog("[DONE] Upload flow completed.");
@@ -225,6 +232,7 @@
                 }
                 appendLog(`[SUCCESS] ${data.message}`);
                 appendLog(`[INFO] ${data.sync.message}`);
+                await loadDocuments();
             } catch (error) {
                 appendLog(`[ERROR] Sync request failed: ${error.message}`);
             } finally {
@@ -244,7 +252,8 @@
                 return;
             }
 
-            appendLog(`[INFO] Deleted document id=${docId}`);
+            const data = await res.json();
+            appendLog(`[INFO] ${data.message} (id=${docId})`);
             await loadDocuments();
         });
 
